@@ -45,9 +45,13 @@ namespace WhiteLagoon.Web.Controllers
             {
                 _db.Villas.Add(obj);    //para injectar na bd
                 _db.SaveChanges();      //vai ver que alterações foram preparadas e faz save na bd
+
+                TempData["success"] = "The Villa has been created sucessfully!";
                 return RedirectToAction(nameof(Index));
             }
-        return View(obj);   
+
+            TempData["error"] = "The Villa could not be created!";
+            return View(obj);   
         }
 
         // 2 - EDIT
@@ -58,11 +62,10 @@ namespace WhiteLagoon.Web.Controllers
             //Aqui estou a aceder à bd, a comparar com o id que foi selecionado pelo clique do get
             Villa? obj = _db.Villas.FirstOrDefault(x => x.Id == villaId);
 
-            if (obj == null)
+            if (obj is null)
             {
-                return NotFound();  
+                return RedirectToAction("Error", "Home");   //1º o ficheiro, depois a vista. É o error, da vista Home. Temos de indicar o caminho.
             }
-
             return View(obj);   //se não for nulo, devolvo TODOS os dados da Villa que quero abrir e editar
         }
 
@@ -76,8 +79,46 @@ namespace WhiteLagoon.Web.Controllers
             {
                 _db.Villas.Update(obj);         //para injectar na bd c/o update
                 _db.SaveChanges();              //vai ver que alterações foram preparadas e faz save na bd
+
+                TempData["success"] = "The Villa has been updated sucessfully!";
                 return RedirectToAction(nameof(Index));
             }
+            TempData["error"] = "The Villa could not be updated!";
+            return View(obj);
+        }
+
+        // 3 - DELETE
+
+        //GET - este é para, depois de selecionar qual é aquele que quero eliminar, recebe o id 
+        public IActionResult Delete(int villaId)
+        {
+            //Aqui estou a aceder à bd, a comparar com o id que foi selecionado pelo clique do get
+            Villa? obj = _db.Villas.FirstOrDefault(x => x.Id == villaId);
+
+            if (obj == null)
+            {
+                return RedirectToAction("Error", "Home");   //1º o ficheiro, depois a vista. É o error, da vista Home. Temos de indicar o caminho.
+            }
+
+            return View(obj);   //se não for nulo, devolvo TODOS os dados da Villa que quero abrir e editar
+        }
+
+        //POST - para gravar os dados atualizados depois de ele apagar
+        [HttpPost]
+        public IActionResult Delete(Villa obj)  //metemos Villa (porque é o modelo) e a var é o nome que quisermos: obj no caso
+        {
+            Villa? objFromDb = _db.Villas.FirstOrDefault(_ => _.Id == obj.Id);
+
+            if (objFromDb is not null)
+            {
+                _db.Villas.Remove(objFromDb);
+                _db.SaveChanges();              //vai ver que alterações foram preparadas e faz save na bd
+
+                TempData["success"] = "The Villa has been deleted sucessfully!";
+                return RedirectToAction(nameof(Index));
+            }
+
+            TempData["error"] = "The Villa could not be deleted!";
             return View(obj);
         }
     }

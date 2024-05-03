@@ -1,0 +1,30 @@
+﻿@if (TempData["error"] != null)
+{
+    <!-- o toastr depende do jquery, por isso precisamos de meter o script do jquery em cada um destes ifs, para ele ler o script do toastr-->
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.js" integrity="sha512-lbwH47l/tPXJYG9AcFNoJaTMhGvYWhVM9YI43CT+uteTRRaiLCui8snIgyAN8XWgNjNhCqlAUdzZptso6OCoFQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script type="text/javascript">
+        toastr.options = {
+            "positionClass": "toast-top-center",
+            "progressBar": true,
+            "closeButton": true,
+        }
+        toastr.error('@TempData["error"]');
+    </script>
+
+}
+
+@if (TempData["success"] != null)
+{
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.js" integrity="sha512-lbwH47l/tPXJYG9AcFNoJaTMhGvYWhVM9YI43CT+uteTRRaiLCui8snIgyAN8XWgNjNhCqlAUdzZptso6OCoFQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script type="text/javascript">
+        toastr.options = {
+            "positionClass": "toast-top-center",
+            "progressBar": true,
+            "closeButton": true,
+        }
+        toastr.success('@TempData["success"]');
+    </script>
+}
