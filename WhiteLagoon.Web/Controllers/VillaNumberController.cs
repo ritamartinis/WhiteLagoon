@@ -1,6 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using WhiteLagoon.Domain.Entities;
 using WhiteLagoon.Infrastructure.Data;
+using WhiteLagoon.Web.ViewModels;
 
 namespace WhiteLagoon.Web.Controllers
 {
@@ -16,7 +19,10 @@ namespace WhiteLagoon.Web.Controllers
 
         public IActionResult Index()
         {
-            var villasNumbers = _db.VillaNumbers.ToList();
+            List<VillaNumber>? villasNumbers = _db.VillaNumbers
+                //Estamos a incluir os dados da Villa.cs
+                .Include(u => u.Villa)
+                .ToList();
 
             return View(villasNumbers);
         }
@@ -26,94 +32,147 @@ namespace WhiteLagoon.Web.Controllers
         //GET - Este é um clique normal que "mostra" o formulário
         public IActionResult Create()
         {
-            return View();
+            //VillaNumberVM é um novo modelo - que só é usado nas vistas - que é superior aos outros
+            VillaNumberVM villaNumberVM = new()
+            {
+                //Estamos a criar um dropdown (um select) mas mostra no VillaNumber os ids da Villa
+                VillaList = _db.Villas.ToList().Select(u => new SelectListItem
+                {
+                    Text = u.Name,
+                    Value = u.Id.ToString(),
+                }),
+            };
+
+            return View(villaNumberVM);
         }
 
         //POST - Aqui é para gravarmos os dados do formulário
         [HttpPost]  //este método vai receber pelo método post os dados do formulário
         [ValidateAntiForgeryToken]  //para segurança
-        public IActionResult Create(VillaNumber obj)  //metemos Villa (porque é o modelo) e a var é o nome que quisermos: obj no caso
+        public IActionResult Create(VillaNumberVM obj) 
         {
 
-            if (ModelState.IsValid)     //validações do lado do servidor
+            if (ModelState.IsValid)
             {
-                _db.VillaNumbers.Add(obj);    //para injectar na bd
-                _db.SaveChanges();      //vai ver que alterações foram preparadas e faz save na bd
+                //Caso o VillaNumber já exista na bd
+                if (_db.VillaNumbers.Any(u => u.Villa_Number == obj.VillaNumber.Villa_Number))
+                {
+                    TempData["error"] = "The Villa number already exists!";
+                    //Caso dê erro, voltamos a carregar o dropdown do get do create para que os dados possam aparecer de novo.
+                    obj.VillaList = _db.Villas.ToList().Select(u => new SelectListItem
+                    {
+                        Text = u.Name,
+                        Value = u.Id.ToString(),
+                    });
+                    return View(obj);           //volta aqui para o utilizador poder corrigir
+                }
+
+                _db.VillaNumbers.Add(obj.VillaNumber);    //para injectar na bd
+                _db.SaveChanges();                        //vai ver que alterações foram preparadas e faz save na bd
 
                 TempData["success"] = "The Villa has been created sucessfully!";
                 return RedirectToAction(nameof(Index));
             }
 
+            //Resolvi pôr aqui também, para outro eventual erro.
+            obj.VillaList = _db.Villas.ToList().Select(u => new SelectListItem
+            {
+                Text = u.Name,
+                Value = u.Id.ToString(),
+            });
             TempData["error"] = "The Villa could not be created!";
-            return View(obj);   
+            return View(obj);
         }
 
         // 2 - EDIT
 
-        //GET - este é para, depois de selecionar qual é aquele que quero editar, recebe o id 
-        public IActionResult Update(int villaId)
+        //GET - este é para, depois de selecionar qual é aquele que quero editar, recebe o villanumberid
+        public IActionResult Update(int villaNumberId)
         {
-            //Aqui estou a aceder à bd, a comparar com o id que foi selecionado pelo clique do get
-            Villa? obj = _db.Villas.FirstOrDefault(x => x.Id == villaId);
-
-            if (obj is null)
+            VillaNumberVM villaNumberVM = new()
             {
-                return RedirectToAction("Error", "Home");   //1º o ficheiro, depois a vista. É o error, da vista Home. Temos de indicar o caminho.
+                VillaList = _db.Villas.ToList().Select(u => new SelectListItem
+                {
+                    Text = u.Name,
+                    Value = u.Id.ToString(),
+                }),
+                VillaNumber = _db.VillaNumbers.FirstOrDefault(u => u.Villa_Number == villaNumberId)!
+            };
+            
+            if (villaNumberVM.VillaNumber is null)
+            {
+                return RedirectToAction("Error", "Home");
             }
-            return View(obj);   //se não for nulo, devolvo TODOS os dados da Villa que quero abrir e editar
+
+            return View(villaNumberVM);
         }
 
         //POST - para gravar os dados atualizados
-        [HttpPost]  
-        [ValidateAntiForgeryToken]  
-        public IActionResult Update(Villa obj)  //metemos Villa (porque é o modelo) e a var é o nome que quisermos: obj no caso
-        { 
-            if (ModelState.IsValid && obj.Id > 0)             //validações do lado do servidor
-                                                              //segurança adicional - se o Id for zero, nunca dá update. Zero é para criar.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Update(VillaNumberVM villaNumberVM)  //metemos VillaNumberVM (porque é o modelo) e a var é o nome que quisermos: villaNumberVM no caso
+        {
+            if (ModelState.IsValid)
             {
-                _db.Villas.Update(obj);         //para injectar na bd c/o update
-                _db.SaveChanges();              //vai ver que alterações foram preparadas e faz save na bd
+                _db.VillaNumbers.Update(villaNumberVM.VillaNumber);    //para injectar na bd
+                _db.SaveChanges();                                     //vai ver que alterações foram preparadas e faz save na bd
 
                 TempData["success"] = "The Villa has been updated sucessfully!";
                 return RedirectToAction(nameof(Index));
             }
+
+            //Se erro, volta para trás e recarregamos o dropdown
+            villaNumberVM.VillaList = _db.Villas.ToList().Select(u => new SelectListItem
+            {
+                Text = u.Name,
+                Value = u.Id.ToString(),
+            });
             TempData["error"] = "The Villa could not be updated!";
-            return View(obj);
+
+            return View(villaNumberVM);
         }
 
         // 3 - DELETE
 
-        //GET - este é para, depois de selecionar qual é aquele que quero eliminar, recebe o id 
-        public IActionResult Delete(int villaId)
+        //GET - este é para, depois de selecionar qual é aquele que quero eliminar, recebe o villaNumberId
+        public IActionResult Delete(int villaNumberId)
         {
-            //Aqui estou a aceder à bd, a comparar com o id que foi selecionado pelo clique do get
-            Villa? obj = _db.Villas.FirstOrDefault(x => x.Id == villaId);
-
-            if (obj == null)
+            VillaNumberVM villaNumberVM = new()
             {
-                return RedirectToAction("Error", "Home");   //1º o ficheiro, depois a vista. É o error, da vista Home. Temos de indicar o caminho.
+                VillaList = _db.Villas.ToList().Select(u => new SelectListItem
+                {
+                    Text = u.Name,
+                    Value = u.Id.ToString(),
+                }),
+                VillaNumber = _db.VillaNumbers.FirstOrDefault(u => u.Villa_Number == villaNumberId)!
+            };
+
+            if (villaNumberVM.VillaNumber is null)
+            {
+                return RedirectToAction("Error", "Home");
             }
 
-            return View(obj);   //se não for nulo, devolvo TODOS os dados da Villa que quero abrir e editar
+            return View(villaNumberVM);
         }
 
         //POST - para gravar os dados atualizados depois de ele apagar
         [HttpPost]
-        public IActionResult Delete(Villa obj)  //metemos Villa (porque é o modelo) e a var é o nome que quisermos: obj no caso
+        public IActionResult Delete(VillaNumberVM villaNumberVM)
         {
-            Villa? objFromDb = _db.Villas.FirstOrDefault(_ => _.Id == obj.Id);
+            VillaNumber? objFromDb = _db.VillaNumbers.FirstOrDefault(_ => _.Villa_Number == villaNumberVM.VillaNumber.Villa_Number);
 
             if (objFromDb is not null)
             {
-                _db.Villas.Remove(objFromDb);
-                _db.SaveChanges();              //vai ver que alterações foram preparadas e faz save na bd
+                _db.VillaNumbers.Remove(objFromDb);
+                _db.SaveChanges();
 
-                TempData["success"] = "The Villa has been deleted sucessfully!";
+                TempData["success"] = "The Villa has been deleted successfully.";
+
                 return RedirectToAction(nameof(Index));
             }
 
-            TempData["error"] = "The Villa could not be deleted!";
-            return View(obj);
+            TempData["error"] = "The Villa could not be deleted.";
+            return View(villaNumberVM);
         }
     }
 }
