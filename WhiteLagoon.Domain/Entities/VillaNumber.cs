@@ -8,7 +8,7 @@ namespace WhiteLagoon.Domain.Entities
     {
         [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
         //sempre que eu quiser que a chave primária seja algo != de id ou o nome da classe, tenho obrigatoria// de colocar [Key] para saber
-        //Em relaçãzo do BD Generated, isto é para não ser AI e para a base de dados não controlar
+        //Em relação do BD Generated, isto é para não ser AI e para a base de dados não controlar
         //Somos nós que decidimos que número de quarto é que colocamos
         [Display(Name = "Villa Number")]
         public int Villa_Number { get; set; }       //nr do quarto

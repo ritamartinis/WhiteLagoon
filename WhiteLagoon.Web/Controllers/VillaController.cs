@@ -1,28 +1,34 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using WhiteLagoon.Application.Common.Interfaces;
 using WhiteLagoon.Domain.Entities;
-using WhiteLagoon.Infrastructure.Data;
 
 namespace WhiteLagoon.Web.Controllers
 {
 
     public class VillaController : Controller
     {
-        private readonly ApplicationDbContext _db;
+        private readonly IUnitOfWork _unitOfWork;   //o nome _unitOfWork é o que quisermos
 
-        public VillaController(ApplicationDbContext db)
+        //para as imagens
+        private readonly IWebHostEnvironment _webHostEnvironment;
+
+        //CONSTRUTOR
+        //Estamos a aceder através do repositório
+        public VillaController(IUnitOfWork unitOfWork, IWebHostEnvironment webHostEnvironment)
         {
-            _db = db;
+            _unitOfWork = unitOfWork;
+            _webHostEnvironment = webHostEnvironment;
         }
 
+        //INDEX
         public IActionResult Index()
         {
-            var villas = _db.Villas.ToList();
+            var villas = _unitOfWork.Villa.GetAll();
 
             return View(villas);
         }
 
         //1 - CREATE A NEW VILLA
-
         //GET - Este é um clique normal que "mostra" o formulário
         public IActionResult Create()
         {
@@ -43,8 +49,33 @@ namespace WhiteLagoon.Web.Controllers
 
             if (ModelState.IsValid)     //validações do lado do servidor
             {
-                _db.Villas.Add(obj);    //para injectar na bd
-                _db.SaveChanges();      //vai ver que alterações foram preparadas e faz save na bd
+                //File Upload
+                if (obj.Image is not null)
+                {
+                    //Devemos gerar sempre nomes aleatórios na bd para que ela não estoire cada vez que o user faz upload de uma
+                    string fileName = Guid.NewGuid().ToString() + Path.GetExtension(obj.Image.FileName);
+                    //Guid é o que garante o nome igual. Defini aqui o nome para a imagem
+                    //Preciso também da extensão da imagem. Esse comando é o que esta a seguir ao +. 
+                    //onde vou guardar a imagem?
+                    string imagePath = Path.Combine(_webHostEnvironment.WebRootPath, @"images\VillaImages");
+                    //(vai dar ao caminho até à nossa pasta: www.root + o caminho para as pastas)
+
+                    //proteção para a bd não estoirar
+                    using (var fileStream = new FileStream(Path.Combine(imagePath, fileName), FileMode.Create))
+                    {
+                        obj.Image.CopyTo(fileStream);
+                    }
+                    obj.ImageUrl = @"\images\VillaImages\" + fileName;
+                }
+                else
+                {
+                    //Se o user não colocar imagem, é colocado esta por default
+                    obj.ImageUrl = "https://placehold.co/600x400";
+                }
+
+
+                _unitOfWork.Villa.Add(obj);    //para injectar na bd
+                _unitOfWork.Save();            //vai ver que alterações foram preparadas e faz save na bd
 
                 TempData["success"] = "The Villa has been created sucessfully!";
                 return RedirectToAction(nameof(Index));
@@ -55,12 +86,11 @@ namespace WhiteLagoon.Web.Controllers
         }
 
         // 2 - EDIT
-
         //GET - este é para, depois de selecionar qual é aquele que quero editar, recebe o id 
         public IActionResult Update(int villaId)
         {
             //Aqui estou a aceder à bd, a comparar com o id que foi selecionado pelo clique do get
-            Villa? obj = _db.Villas.FirstOrDefault(x => x.Id == villaId);
+            Villa? obj = _unitOfWork.Villa.Get(x => x.Id == villaId);
 
             if (obj is null)
             {
@@ -77,8 +107,8 @@ namespace WhiteLagoon.Web.Controllers
             if (ModelState.IsValid && obj.Id > 0)             //validações do lado do servidor
                                                               //segurança adicional - se o Id for zero, nunca dá update. Zero é para criar.
             {
-                _db.Villas.Update(obj);         //para injectar na bd c/o update
-                _db.SaveChanges();              //vai ver que alterações foram preparadas e faz save na bd
+                _unitOfWork.Villa.Update(obj);         //para injectar na bd c/o update
+                _unitOfWork.Save();              //vai ver que alterações foram preparadas e faz save na bd
 
                 TempData["success"] = "The Villa has been updated sucessfully!";
                 return RedirectToAction(nameof(Index));
@@ -88,12 +118,11 @@ namespace WhiteLagoon.Web.Controllers
         }
 
         // 3 - DELETE
-
         //GET - este é para, depois de selecionar qual é aquele que quero eliminar, recebe o id 
         public IActionResult Delete(int villaId)
         {
             //Aqui estou a aceder à bd, a comparar com o id que foi selecionado pelo clique do get
-            Villa? obj = _db.Villas.FirstOrDefault(x => x.Id == villaId);
+            Villa? obj = _unitOfWork.Villa.Get(x => x.Id == villaId); 
 
             if (obj == null)
             {
@@ -107,12 +136,12 @@ namespace WhiteLagoon.Web.Controllers
         [HttpPost]
         public IActionResult Delete(Villa obj)  //metemos Villa (porque é o modelo) e a var é o nome que quisermos: obj no caso
         {
-            Villa? objFromDb = _db.Villas.FirstOrDefault(_ => _.Id == obj.Id);
+            Villa? objFromDb = _unitOfWork.Villa.Get(_ => _.Id == obj.Id);
 
             if (objFromDb is not null)
             {
-                _db.Villas.Remove(objFromDb);
-                _db.SaveChanges();              //vai ver que alterações foram preparadas e faz save na bd
+                _unitOfWork.Villa.Remove(objFromDb);
+                _unitOfWork.Save();              //vai ver que alterações foram preparadas e faz save na bd
 
                 TempData["success"] = "The Villa has been deleted sucessfully!";
                 return RedirectToAction(nameof(Index));

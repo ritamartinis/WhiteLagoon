@@ -1,4 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.Http;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WhiteLagoon.Domain.Entities
 {
@@ -20,8 +22,11 @@ namespace WhiteLagoon.Domain.Entities
         [Range(1, 10)]
         public int Occupancy { get; set; }
 
+        [NotMapped] //Esta propriedade serve para dizer que esta propriedade NÃO É para criar uma coluna na bd
+        public IFormFile? Image { get; set; }   
+
         [Display(Name = "Image Url")]
-        public string? ImageUrl { get; set; }
+        public string? ImageUrl { get; set; }           //Não queremos guardar imagens na bd. por isso vamos guardar na bd apenas o caminho
 
         public DateTime? CreatedDate { get; set; }
         public DateTime? UpdatedDate { get; set; }

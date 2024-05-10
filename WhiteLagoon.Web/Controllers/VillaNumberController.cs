@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Mvc.Rendering;
 using WhiteLagoon.Application.Common.Interfaces;
 using WhiteLagoon.Domain.Entities;
-using WhiteLagoon.Infrastructure.Data;
 using WhiteLagoon.Web.ViewModels;
 
 namespace WhiteLagoon.Web.Controllers
@@ -10,25 +9,21 @@ namespace WhiteLagoon.Web.Controllers
 
     public class VillaNumberController : Controller
     {
-        private readonly ApplicationDbContext _db;
+        private readonly IUnitOfWork _unitOfWork;   //o nome _unitOfWork é o que quisermos
 
-        public VillaNumberController(ApplicationDbContext db)
+        //Estamos a aceder através do repositório
+        public VillaNumberController(IUnitOfWork unitOfWork)
         {
-            _db = db;
+            _unitOfWork = unitOfWork;
         }
 
         public IActionResult Index()
         {
-            List<VillaNumber>? villasNumbers = _db.VillaNumbers
-                //Estamos a incluir os dados da Villa.cs
-                .Include(u => u.Villa)
-                .ToList();
-
-            return View(villasNumbers);
+            var villaNumbers = _unitOfWork.VillaNumber.GetAll(includeProperties: "Villa");
+            return View(villaNumbers);
         }
 
         //1 - CREATE
-
         //GET - Este é um clique normal que "mostra" o formulário
         public IActionResult Create()
         {
@@ -36,7 +31,7 @@ namespace WhiteLagoon.Web.Controllers
             VillaNumberVM villaNumberVM = new()
             {
                 //Estamos a criar um dropdown (um select) mas mostra no VillaNumber os ids da Villa
-                VillaList = _db.Villas.ToList().Select(u => new SelectListItem
+                VillaList = _unitOfWork.Villa.GetAll().Select(u => new SelectListItem
                 {
                     Text = u.Name,
                     Value = u.Id.ToString(),
@@ -55,11 +50,11 @@ namespace WhiteLagoon.Web.Controllers
             if (ModelState.IsValid)
             {
                 //Caso o VillaNumber já exista na bd
-                if (_db.VillaNumbers.Any(u => u.Villa_Number == obj.VillaNumber.Villa_Number))
+                if (_unitOfWork.VillaNumber.Any(u => u.Villa_Number == obj.VillaNumber.Villa_Number))
                 {
                     TempData["error"] = "The Villa number already exists!";
                     //Caso dê erro, voltamos a carregar o dropdown do get do create para que os dados possam aparecer de novo.
-                    obj.VillaList = _db.Villas.ToList().Select(u => new SelectListItem
+                    obj.VillaList = _unitOfWork.Villa.GetAll().Select(u => new SelectListItem
                     {
                         Text = u.Name,
                         Value = u.Id.ToString(),
@@ -67,15 +62,15 @@ namespace WhiteLagoon.Web.Controllers
                     return View(obj);           //volta aqui para o utilizador poder corrigir
                 }
 
-                _db.VillaNumbers.Add(obj.VillaNumber);    //para injectar na bd
-                _db.SaveChanges();                        //vai ver que alterações foram preparadas e faz save na bd
+                _unitOfWork.VillaNumber.Add(obj.VillaNumber);    //para injectar na bd
+                _unitOfWork.Save();                             //vai ver que alterações foram preparadas e faz save na bd
 
                 TempData["success"] = "The Villa has been created sucessfully!";
                 return RedirectToAction(nameof(Index));
             }
 
             //Resolvi pôr aqui também, para outro eventual erro.
-            obj.VillaList = _db.Villas.ToList().Select(u => new SelectListItem
+            obj.VillaList = _unitOfWork.Villa.GetAll().Select(u => new SelectListItem
             {
                 Text = u.Name,
                 Value = u.Id.ToString(),
@@ -85,20 +80,19 @@ namespace WhiteLagoon.Web.Controllers
         }
 
         // 2 - EDIT
-
         //GET - este é para, depois de selecionar qual é aquele que quero editar, recebe o villanumberid
         public IActionResult Update(int villaNumberId)
         {
             VillaNumberVM villaNumberVM = new()
             {
-                VillaList = _db.Villas.ToList().Select(u => new SelectListItem
+                VillaList = _unitOfWork.Villa.GetAll().Select(u => new SelectListItem
                 {
                     Text = u.Name,
-                    Value = u.Id.ToString(),
+                    Value = u.Id.ToString()
                 }),
-                VillaNumber = _db.VillaNumbers.FirstOrDefault(u => u.Villa_Number == villaNumberId)!
+                VillaNumber = _unitOfWork.VillaNumber.Get(_ => _.Villa_Number == villaNumberId)
             };
-            
+
             if (villaNumberVM.VillaNumber is null)
             {
                 return RedirectToAction("Error", "Home");
@@ -114,15 +108,15 @@ namespace WhiteLagoon.Web.Controllers
         {
             if (ModelState.IsValid)
             {
-                _db.VillaNumbers.Update(villaNumberVM.VillaNumber);    //para injectar na bd
-                _db.SaveChanges();                                     //vai ver que alterações foram preparadas e faz save na bd
+                _unitOfWork.VillaNumber.Update(villaNumberVM.VillaNumber);    //para injectar na bd
+                _unitOfWork.Save();                                     //vai ver que alterações foram preparadas e faz save na bd
 
                 TempData["success"] = "The Villa has been updated sucessfully!";
                 return RedirectToAction(nameof(Index));
             }
 
             //Se erro, volta para trás e recarregamos o dropdown
-            villaNumberVM.VillaList = _db.Villas.ToList().Select(u => new SelectListItem
+            villaNumberVM.VillaList = _unitOfWork.Villa.GetAll().Select(u => new SelectListItem
             {
                 Text = u.Name,
                 Value = u.Id.ToString(),
@@ -133,18 +127,17 @@ namespace WhiteLagoon.Web.Controllers
         }
 
         // 3 - DELETE
-
         //GET - este é para, depois de selecionar qual é aquele que quero eliminar, recebe o villaNumberId
         public IActionResult Delete(int villaNumberId)
         {
             VillaNumberVM villaNumberVM = new()
             {
-                VillaList = _db.Villas.ToList().Select(u => new SelectListItem
+                VillaList = _unitOfWork.Villa.GetAll().Select(u => new SelectListItem
                 {
                     Text = u.Name,
                     Value = u.Id.ToString(),
                 }),
-                VillaNumber = _db.VillaNumbers.FirstOrDefault(u => u.Villa_Number == villaNumberId)!
+                VillaNumber = _unitOfWork.VillaNumber.Get(u => u.Villa_Number == villaNumberId)!
             };
 
             if (villaNumberVM.VillaNumber is null)
@@ -159,12 +152,12 @@ namespace WhiteLagoon.Web.Controllers
         [HttpPost]
         public IActionResult Delete(VillaNumberVM villaNumberVM)
         {
-            VillaNumber? objFromDb = _db.VillaNumbers.FirstOrDefault(_ => _.Villa_Number == villaNumberVM.VillaNumber.Villa_Number);
+            VillaNumber? objFromDb = _unitOfWork.VillaNumber.Get(_ => _.Villa_Number == villaNumberVM.VillaNumber.Villa_Number);
 
             if (objFromDb is not null)
             {
-                _db.VillaNumbers.Remove(objFromDb);
-                _db.SaveChanges();
+                _unitOfWork.VillaNumber.Remove(objFromDb);
+                _unitOfWork.Save();
 
                 TempData["success"] = "The Villa has been deleted successfully.";
 

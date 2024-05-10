@@ -12,8 +12,8 @@ using WhiteLagoon.Infrastructure.Data;
 namespace WhiteLagoon.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240503111317_AddVillaNumber")]
-    partial class AddVillaNumber
+    [Migration("20240508153307_Tudo")]
+    partial class Tudo
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
