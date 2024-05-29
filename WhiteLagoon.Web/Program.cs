@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using WhiteLagoon.Application.Common.Interfaces;
+using WhiteLagoon.Domain.Entities;
 using WhiteLagoon.Infrastructure.Data;
 using WhiteLagoon.Infrastructure.Repository;
 
@@ -11,6 +13,13 @@ builder.Services.AddControllersWithViews();
 // Adicionar ApplicationDbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+//Adicionar o Identity
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+    //para ligar a nosso identidade ao nosso aplicationDbContext
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    //para proteger palavras-passes (transforma em hash), etc etc
+    .AddDefaultTokenProviders();
 
 //Adicionar apenas o Repositório do Unit of Work
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();    //Sempre primeiro o Repositório e depois a Classe. A interface está no .Application e o repositório no .Infrastructure

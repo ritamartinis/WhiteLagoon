@@ -1,9 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using WhiteLagoon.Domain.Entities;
 
 namespace WhiteLagoon.Infrastructure.Data
 {
-	public class ApplicationDbContext : DbContext
+	//quero usar a identidade. basta colocar "identity" aqui para se perceber + "ApplicationUser" (porque é esta que eu vou usar e não a genérica)
+	public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 	{
 		public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
 
@@ -13,9 +15,15 @@ namespace WhiteLagoon.Infrastructure.Data
 
 		public DbSet<Amenity> Amenities { get; set; }
 
+		//se quero acrescentar, a tabela tem de ser criada
+		//mas ele vai pegar na tabela que já existe - AspNetUsers - e vai atualizar com outros campos
+		//porque ele sabe que esta classe já deriva do Identity Framework
+		public DbSet<ApplicationUser> ApplicationUsers { get; set; }
+
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
-			// base.OnModelCreating(modelBuilder);
+			//Super construtor - precisamos para o identity
+			base.OnModelCreating(modelBuilder);
 
 			modelBuilder.Entity<Villa>().HasData(
 				new Villa
