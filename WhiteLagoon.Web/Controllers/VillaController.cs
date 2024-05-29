@@ -107,8 +107,32 @@ namespace WhiteLagoon.Web.Controllers
             if (ModelState.IsValid && obj.Id > 0)             //validações do lado do servidor
                                                               //segurança adicional - se o Id for zero, nunca dá update. Zero é para criar.
             {
-                _unitOfWork.Villa.Update(obj);         //para injectar na bd c/o update
-                _unitOfWork.Save();              //vai ver que alterações foram preparadas e faz save na bd
+				//File Upload
+				if (obj.Image is not null)
+				{
+					string fileName = Guid.NewGuid().ToString() + Path.GetExtension(obj.Image.FileName);
+					string imagePath = Path.Combine(_webHostEnvironment.WebRootPath, @"images\VillaImages");
+                        
+                    //Se existir imagem, o objetivo é apagá-la antes de colocar a nova
+                    if (!string.IsNullOrEmpty(obj.ImageUrl))
+                    {
+                        var oldImagePath = Path.Combine(_webHostEnvironment.WebRootPath, obj.ImageUrl.TrimStart('\\'));
+                        //Para tirar catateres especiais do path, usamos o TrimStart.
+                       
+                        //Se o ficheiro existir, vamos apagar a imagem
+                        if (System.IO.File.Exists(oldImagePath))
+                            System.IO.File.Delete(oldImagePath);
+					}
+					//proteção para a bd não estoirar
+					using (var fileStream = new FileStream(Path.Combine(imagePath, fileName), FileMode.Create))
+					{
+						obj.Image.CopyTo(fileStream);
+					}
+					obj.ImageUrl = @"\images\VillaImages\" + fileName;
+				}
+
+				_unitOfWork.Villa.Update(obj);         //para injectar na bd c/o update
+                _unitOfWork.Save();                   //vai ver que alterações foram preparadas e faz save na bd
 
                 TempData["success"] = "The Villa has been updated sucessfully!";
                 return RedirectToAction(nameof(Index));
@@ -140,7 +164,17 @@ namespace WhiteLagoon.Web.Controllers
 
             if (objFromDb is not null)
             {
-                _unitOfWork.Villa.Remove(objFromDb);
+				//Se existir imagem, o objetivo é apagá-la antes de colocar a nova
+				if (!string.IsNullOrEmpty(objFromDb.ImageUrl))
+				{
+					var oldImagePath = Path.Combine(_webHostEnvironment.WebRootPath, objFromDb.ImageUrl.TrimStart('\\'));
+					//Para tirar catateres especiais do path, usamos o TrimStart.
+
+					//Se o ficheiro existir, vamos apagar a imagem
+					if (System.IO.File.Exists(oldImagePath))
+						System.IO.File.Delete(oldImagePath);
+				}
+				_unitOfWork.Villa.Remove(objFromDb);
                 _unitOfWork.Save();              //vai ver que alterações foram preparadas e faz save na bd
 
                 TempData["success"] = "The Villa has been deleted sucessfully!";

@@ -14,6 +14,7 @@ namespace WhiteLagoon.Domain.Entities
         public int Villa_Number { get; set; }       //nr do quarto
 
         [ForeignKey("Villa")]   //Chave estrangeira é a Villa, ou seja, o tipo de quarto. Esta é a ligação ao Villa.cs
+        [Display(Name = "Villa")]
         //Para criar uma chave estrangeira, precisamos destes dois: int villa id e villa villa
         public int VillaId { get; set; }
         //este é só para navegação entre as duas tabelas, para não nos dar erro quando preenchemos o formulário, precisamos:
